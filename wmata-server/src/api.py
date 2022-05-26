@@ -51,6 +51,14 @@ class WMATA:
 
         return data
 
+    def fetch_live_positions(self):
+        data = self._fetch("/TrainPositions/TrainPositions?contentType=json")
+
+        for train in data["TrainPositions"]:
+            train["LineColor"] = self.line_colors.get(train["LineCode"])
+
+        return data
+
     def fetch_circuits(self):
         data = self._fetch("/TrainPositions/StandardRoutes?contentType=json")
         

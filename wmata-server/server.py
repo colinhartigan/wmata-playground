@@ -12,3 +12,7 @@ def get_all_stations(range):
 @app.route('/api/circuits/all')
 def get_all_circuits():
     return WMATA.fetch_circuits()
+
+@app.route('/api/trains')
+def get_trains():
+    return WMATA.fetch_live_positions()
