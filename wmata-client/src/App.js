@@ -15,7 +15,7 @@ const theme = createTheme({
     },
     typography: {
         fontFamily: [
-            'Helvetica Neue',
+            "Helvetica Neue",
         ].join(','),
     },
 });
