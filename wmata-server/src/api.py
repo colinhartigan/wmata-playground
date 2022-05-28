@@ -20,6 +20,7 @@ class WMATA:
             "YL": "#f5d415",
             "GR": "#00b050",
             "SV": "#a2a4a1",
+            "NS": "#eeeeee",
         }
         self.cache = {
             "stations": {
@@ -37,23 +38,20 @@ class WMATA:
         except:  # as no data is set, an exception will be raised later in the method
             raise Exception("error bruh")
 
-    def fetch_station_definitions(self, line_code: str = None, latlong_range: int = 1000):
+    def fetch_line_definitions(self):
+        data = self._fetch("/Rail.svc/json/jLines")
+
+        payload = {"Lines": {}}
+        
+        for line in data["Lines"]:
+            line["ColorHex"] = self.line_colors.get(line["LineCode"])
+            payload["Lines"][line["LineCode"]] = line
+
+        return payload
+
+    def fetch_station_definitions(self, line_code: str = None):
 
         data = self._fetch("/Rail.svc/json/jStations", params={"LineCode": line_code})
-
-        max_lat = max([station["Lat"] for station in data["Stations"]])
-        max_lon = max([station["Lon"] for station in data["Stations"]])
-        min_lat = min([station["Lat"] for station in data["Stations"]])
-        min_lon = min([station["Lon"] for station in data["Stations"]])
-
-        for station in data["Stations"]:
-            station["Lat"] = round((station["Lat"] - min_lat) / (max_lat - min_lat) * latlong_range) + 10
-            station["Lon"] = round((station["Lon"] - min_lon) / (max_lon - min_lon) * latlong_range) + 10
-            station["ColorHex"] = self.line_colors.get(station["LineCode1"])
-
-        data["MaxHeight"] = max([station["Lat"] for station in data["Stations"]]) + 20
-        # buffer space for edge station
-        data["MaxWidth"] = max([station["Lon"] for station in data["Stations"]]) + 20
 
         return data
 
@@ -64,7 +62,7 @@ class WMATA:
             train["LineColor"] = self.line_colors.get(train["LineCode"])
 
         return data
-
+ 
     def fetch_circuits(self):
         data = self._fetch("/TrainPositions/StandardRoutes?contentType=json")
         

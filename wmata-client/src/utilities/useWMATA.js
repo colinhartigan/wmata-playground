@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { createGlobalState } from 'react-hooks-global-state';
 
-const { useGlobalState } = createGlobalState({
+const defaultState = {
     stations: null,
+    lines: null,
+    routes: null,
     circuitSegments: null,
     trackSegments: [],
     liveTrainStates: {},
+
+    trackedTrainId: null,
 
     maxHeight: 0,
     maxWidth: 0,
@@ -15,13 +19,20 @@ const { useGlobalState } = createGlobalState({
     trainSize: 20,
     trackSize: 2,
     refreshInterval: 7,
-});
+}
 
-function useWMATAMaster() {
+const { useGlobalState } = createGlobalState(defaultState);
+const scaleFactor = 1
+
+function useWMATAMaster(startHeight) {
     const [stations, setStations] = useGlobalState('stations');
+    const [lines, setLines] = useGlobalState('lines');
+    const [routes, setRoutes] = useGlobalState('routes');
     const [circuitSegments, setCircuitSegments] = useGlobalState('circuitSegments');
     const [trackSegments, setTrackSegments] = useGlobalState('trackSegments');
     const [liveTrainStates, setLiveTrainStates] = useGlobalState('liveTrainStates')
+
+    const [trackedTrainId, setTrackedTrainId] = useGlobalState('trackedTrainId');
 
     const [maxHeight, setMaxHeight] = useGlobalState('maxHeight');
     const [maxWidth, setMaxWidth] = useGlobalState('maxWidth');
@@ -33,14 +44,32 @@ function useWMATAMaster() {
     const [refreshInterval, setRefreshInterval] = useGlobalState('refreshInterval');
 
     useEffect(() => {
-        fetch(`/api/stations/all/${height - 60}`)
+        startHeight = startHeight * scaleFactor; 
+
+        setHeight(startHeight);
+        setStationSize(startHeight / 125);
+        setTrainSize(startHeight / 65);
+        setTrackSize(startHeight / 500);
+
+        fetch("/api/lines")
             .then(res => res.json())
             .then(data => {
-                setMaxHeight(data.MaxHeight)
-                setMaxWidth(data.MaxWidth)
-                setStations(data["Stations"]);
-            });
+                setLines(data.Lines);
+            })
+
     }, []);
+
+    useEffect(() => {
+        if (lines !== null) {
+            fetch(`/api/stations/all`)
+                .then(res => res.json())
+                .then(data => {
+                    setMaxHeight(data.MaxHeight)
+                    setMaxWidth(data.MaxWidth)
+                    parseStations(data.Stations)
+                });
+        }
+    }, [lines])
 
     useEffect(() => {
         if (stations !== null) {
@@ -53,7 +82,7 @@ function useWMATAMaster() {
     }, [stations]);
 
     useEffect(() => {
-        if(circuitSegments !== null){
+        if (circuitSegments !== null) {
             function update() {
                 console.log("train update")
                 fetch("/api/trains")
@@ -68,16 +97,41 @@ function useWMATAMaster() {
             }, refreshInterval * 1000);
         }
     }, [circuitSegments])
-        
+
+
+    function parseStations(stations) {
+        var h = height - (trainSize * 4)
+        console.log(h)
+
+        var lats = stations.map(station => station.Lat);
+        var lons = stations.map(station => station.Lon);
+
+        var maxLat = Math.max.apply(null, lats)
+        var maxLon = Math.max.apply(null, lons)
+        var minLat = Math.min.apply(null, lats)
+        var minLon = Math.min.apply(null, lons)
+
+        for (let station of stations) {
+            station.Lat = Math.round((station.Lat - minLat) / (maxLat - minLat) * h) + (trainSize / 2);
+            station.Lon = Math.round((station.Lon - minLon) / (maxLon - minLon) * h) + (trainSize / 2);
+            station.ColorHex = lines[station.LineCode1].ColorHex;
+        }
+
+        var maxHeight = Math.max.apply(null, stations.map(station => station.Lat)) + trainSize;
+        var maxWidth = Math.max.apply(null, stations.map(station => station.Lon)) + trainSize;
+
+        setMaxHeight(maxHeight)
+        setMaxWidth(maxWidth)
+        setStations(stations)
+
+    }
 
     function generateTrainData(trains) {
         if (circuitSegments !== null) {
-            console.log(liveTrainStates);
-            console.log(circuitSegments)
+            //console.log(circuitSegments)
             let newStates = {};
             trains.forEach(train => {
                 if (circuitSegments.find(segment => segment.segmentId === train.CircuitId)) { //filter out trains not on main tracks
-                    console.log(train);
                     var segment = circuitSegments.find(segment => segment.segmentId === train.CircuitId)
                     var anchorX = segment.anchorX
                     var anchorY = segment.anchorY
@@ -91,8 +145,7 @@ function useWMATAMaster() {
                     }
 
                     var trainStates = train.TrainId in Object.keys(liveTrainStates) ? liveTrainStates[train.TrainId] : {
-                        trainId: train.TrainId,
-                        lineCode: train.LineCode,
+                        ...train,
                         x: 0,
                         y: 0,
                         status: "",
@@ -104,7 +157,7 @@ function useWMATAMaster() {
                     trainStates.status = `${train.LineCode} ${train.TrainId}${status}`;
 
                     newStates[train.TrainId] = trainStates;
-                    console.log(trainStates)
+                    //console.log(trainStates)
 
                     // let newState = { ...newStates, [train.TrainId]: trainStates }
                     // //console.log(trainStates);
@@ -245,6 +298,7 @@ function useWMATAMaster() {
             }
             setCircuitSegments(segmentedCircuit);
             setTrackSegments(trackSegments);
+            setRoutes(circuits);
         })
     }
 
@@ -254,9 +308,13 @@ function useWMATAMaster() {
 
 function useWMATA() {
     const [stations, setStations] = useGlobalState('stations');
+    const [lines, setLines] = useGlobalState('lines');
+    const [routes, setRoutes] = useGlobalState('routes');
     const [circuitSegments, setCircuitSegments] = useGlobalState('circuitSegments');
     const [trackSegments, setTrackSegments] = useGlobalState('trackSegments');
     const [liveTrainStates, setLiveTrainStates] = useGlobalState('liveTrainStates');
+
+    const [trackedTrainId, setTrackedTrainId] = useGlobalState('trackedTrainId');
 
     const [maxHeight, setMaxHeight] = useGlobalState('maxHeight');
     const [maxWidth, setMaxWidth] = useGlobalState('maxWidth')
@@ -267,23 +325,44 @@ function useWMATA() {
     const [trackSize, setTrackSize] = useGlobalState('trackSize');
     const [refreshInterval, setRefreshInterval] = useGlobalState('refreshInterval');
 
-    return [
-        stations, 
-        maxHeight, 
-        maxWidth, 
-        circuitSegments, 
-        trackSegments, 
-        liveTrainStates, 
-        setHeight, 
-        stationSize, 
-        setStationSize, 
-        trainSize, 
-        setTrainSize, 
-        trackSize, 
-        setTrackSize, 
-        refreshInterval, 
-        setRefreshInterval
-    ];
+    function updateScale(zoom) {
+        setStationSize(defaultState.stationSize / zoom);
+        setTrainSize(defaultState.trainSize / zoom);
+        setTrackSize(defaultState.trackSize / zoom);
+    }
+
+    const controller = {
+        stations: stations,
+        lines: lines,
+        routes: routes,
+        circuitSegments: circuitSegments,
+        trackSegments: trackSegments,
+        liveTrainStates: liveTrainStates,
+        trackedTrainId: trackedTrainId,
+        maxHeight: maxHeight,
+        maxWidth: maxWidth,
+        height: height,
+        stationSize: stationSize,
+        trainSize: trainSize,
+        trackSize: trackSize,
+        refreshInterval: refreshInterval,
+
+        setStations: setStations,
+        setLines: setLines,
+        setCircuitSegments: setCircuitSegments,
+        setTrackSegments: setTrackSegments,
+        setLiveTrainStates: setLiveTrainStates,
+        setTrackedTrainId: setTrackedTrainId,
+        setMaxHeight: setMaxHeight,
+        setMaxWidth: setMaxWidth,
+        setHeight: setHeight,
+        setStationSize: setStationSize,
+        setTrainSize: setTrainSize,
+        setTrackSize: setTrackSize,
+        setRefreshInterval: setRefreshInterval,
+    }
+
+    return controller;
 }
 
 export { useWMATAMaster, useWMATA };
