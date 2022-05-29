@@ -17,6 +17,8 @@ function Map() {
     const zoomFrame = useRef(null);
     const [width, height] = useWindowDimensions()
 
+    const zoomWindowSize = 150
+
     useEffect(() => {
         if (zoomFrame.current !== null)
             zoomFrame.current.zoomOut(.5);
@@ -30,7 +32,7 @@ function Map() {
     function zoomToTrain(id) {
         if (zoomFrame.current !== null && WMATA.liveTrainStates !== {}) {
             var train = WMATA.liveTrainStates[id];
-            zoomFrame.current.zoomToZone(train.x - 100 + (WMATA.trainSize / 2), WMATA.maxHeight - (train.y + 100) - (WMATA.trainSize / 2), 200, 200);
+            zoomFrame.current.zoomToZone(train.x - zoomWindowSize + (WMATA.trainSize / 2), WMATA.maxHeight - (train.y + zoomWindowSize) - (WMATA.trainSize / 2), zoomWindowSize * 2, zoomWindowSize * 2);
         }
     }
 
@@ -67,20 +69,30 @@ function Map() {
                                         var trainData = WMATA.liveTrainStates[train]
                                         //console.log(trainData)
                                         return (
-                                            <Tooltip key={trainData.TrainId} title={trainData.status}>
-                                                <Circle onClick={() => { trackTrain(trainData.TrainId) }} sx={{ position: "absolute", width: "auto", height: WMATA.trainSize, left: trainData.x, bottom: trainData.y, color: (trainData.color), transition: `left ${WMATA.refreshInterval}s linear, bottom ${WMATA.refreshInterval}s linear` }} />
-                                            </Tooltip>
+                                            <div key={trainData.TrainId} style={{ height: WMATA.trainSize, width: WMATA.trainSize, position: "absolute", transition: `left ${WMATA.refreshInterval}s linear, bottom ${WMATA.refreshInterval}s linear`, bottom: trainData.y, left: trainData.x, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
+                                                <Tooltip title={trainData.status}>
+                                                    <Circle onClick={() => { trackTrain(trainData.TrainId) }} sx={{ zIndex: 2, width: "100%", height: "100%", color: (trainData.color), }} />
+                                                </Tooltip>
+
+                                                {/* <Circle sx={{ opacity: .4, zIndex: 1, position: "absolute", width: "auto", height: WMATA.trainSize + 6, color: (trainData.color),}} /> */}
+                                            </div>
                                         )
                                     }) : null}
                                 </div>
 
                                 {/* track segments */}
                                 <svg width={WMATA.maxWidth} height={WMATA.maxHeight} style={{ position: "absolute", bottom: 0, left: 0, transform: "scaleY(-1)", zIndex: 1 }}>
+
+                                    {/* {WMATA.circuitSegments.map(segment => {
+                                        return (<line key={`${segment.lineCode}_${segment.segmentId}`} x1={segment.startX} y1={segment.startY} x2={segment.endX} y2={segment.endY} stroke={segment.lineColor} strokeWidth={WMATA.trackSize} style={{ position: "absolute" }} />)
+                                    })} */}
+
                                     {WMATA.trackSegments.map(segment => {
-                                        return (
-                                            <line key={`${segment.stationXCode} - ${segment.stationYCode}`} x1={segment.startX} y1={segment.startY} x2={segment.endX} y2={segment.endY} stroke={segment.lineColors[0]} strokeWidth={WMATA.trackSize} style={{ position: "absolute" }} />
-                                        )
+                                        return (<line key={`${segment.stationXCode} - ${segment.stationYCode}`} x1={segment.startX} y1={segment.startY} x2={segment.endX} y2={segment.endY} stroke={segment.lineColors[0]} strokeWidth={WMATA.trackSize} style={{ position: "absolute" }} />)
+
                                     })}
+
+
                                 </svg>
 
                             </div>

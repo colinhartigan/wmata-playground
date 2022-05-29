@@ -47,8 +47,8 @@ function useWMATAMaster(startHeight) {
         startHeight = startHeight * scaleFactor; 
 
         setHeight(startHeight);
-        setStationSize(startHeight / 125);
-        setTrainSize(startHeight / 65);
+        setStationSize(startHeight / 200);
+        setTrainSize(startHeight / 90);
         setTrackSize(startHeight / 500);
 
         fetch("/api/lines")
@@ -208,9 +208,11 @@ function useWMATAMaster(startHeight) {
 
                         //generate data for each inter-station track segment
                         var trackSegment;
-                        var segmentExists = trackSegments.find(segment => segment.stationXCode === stationXTarget.Code && segment.stationYCode === stationYTarget.Code)
-                        if (segmentExists) {
-                            trackSegment = trackSegments.find(segment => segment.stationXCode === stationXTarget.Code && segment.stationYCode === stationYTarget.Code);
+                        var segmentExists = trackSegments.find(segment => (segment.stationXCode === stationXTarget.Code && segment.stationYCode === stationYTarget.Code) || (segment.stationXCode === stationYTarget.Code && segment.stationYCode === stationXTarget.Code) || (segment.stationYCode === stationXTarget.Code && segment.stationXCode === stationYTarget.Code))
+                        if (segmentExists !== undefined) {
+                            console.log("dupe")
+                            trackSegment = segmentExists
+                            console.log(trackSegment)
                         } else {
                             trackSegment = {
                                 stationXCode: stationXTarget.Code,
@@ -230,7 +232,9 @@ function useWMATAMaster(startHeight) {
 
                         if (!trackSegment.lineCodes.includes(line.LineCode))
                             trackSegment.lineCodes.push(line.LineCode);
-                        trackSegment.lineColors.push(line.LineColor);
+                        
+                        if(!trackSegment.lineColors.includes(line.LineColor))
+                            trackSegment.lineColors.push(line.LineColor);
 
 
 
@@ -261,12 +265,12 @@ function useWMATAMaster(startHeight) {
                             } else {
                                 if (!segmentedCircuit.some(segment => segment.segmentId === segmentData.CircuitId && segment.lineCode === line.LineCode)) {
                                     circuitSegment = {
-                                        startX: Math.round(xCoord),
-                                        startY: Math.round(yCoord),
-                                        endX: Math.round(xCoord + xStep),
-                                        endY: Math.round(yCoord + yStep),
-                                        anchorX: Math.round(xCoord) + ((Math.round(xCoord + xStep) - Math.round(xCoord)) / 2),
-                                        anchorY: Math.round(yCoord) + ((Math.round(yCoord + yStep) - Math.round(yCoord)) / 2),
+                                        startX: xCoord,
+                                        startY: yCoord,
+                                        endX: xCoord + xStep,
+                                        endY: yCoord + yStep,
+                                        anchorX: (xCoord + (xCoord + xStep - xCoord) / 2),
+                                        anchorY: (yCoord + (yCoord + yStep - yCoord) / 2),
                                         segmentId: segmentData.CircuitId,
                                         order: segmentData.SeqNum,
                                         lineCode: line.LineCode,
@@ -281,7 +285,7 @@ function useWMATAMaster(startHeight) {
                             }
                         }
 
-                        if (!segmentExists)
+                        if (segmentExists === undefined)
                             trackSegments.push(trackSegment);
 
                         x = y;
@@ -301,7 +305,6 @@ function useWMATAMaster(startHeight) {
             setRoutes(circuits);
         })
     }
-
 
     return [];
 }

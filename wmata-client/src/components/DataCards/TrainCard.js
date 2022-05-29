@@ -26,6 +26,7 @@ function Train() {
     const [stationName, setStationName] = useState(null);
     const [stateText, setStateText] = useState(null)
     const [nextStopText, setNextStopText] = useState(null);
+    const [serviceTypeText, setServiceTypeText] = useState(null);
 
 
     useEffect(() => {
@@ -40,9 +41,9 @@ function Train() {
 
             if (data.DestinationStationCode !== null) {
                 var destination = WMATA.stations.find(station => station.Code === data.DestinationStationCode)
-                setDestinationName(destination.Name)
+                setDestinationName(`To ${destination.Name}`)
             } else {
-                setDestinationName("unknown")
+                setDestinationName("Not in service")
             }
 
             var circuitId = data.CircuitId;
@@ -64,7 +65,7 @@ function Train() {
             }
 
             console.log(routeSegments)
-            if(routeSegments === null){
+            if (routeSegments === null) {
                 setNextStopText("")
             }
 
@@ -90,10 +91,10 @@ function Train() {
                 } else {
                     direction = -1;
                 }
-                
-                if(currentSegment !== destinationSegment){
+
+                if (currentSegment !== destinationSegment) {
                     var i = direction === 1 ? segmentIndex + 1 : segmentIndex - 1;
-                    while(i !== routeSegments.length && i !== -1) {
+                    while (i !== routeSegments.length && i !== -1) {
                         if (routeSegments[i].StationCode !== null) {
                             nextStationCode = routeSegments[i].StationCode
                             break
@@ -104,11 +105,17 @@ function Train() {
                     nextStopText = WMATA.stations.find(station => station.Code === nextStationCode).Name
                     setNextStopText(`Next stop - ${nextStopText}`);
                 } else {
-                    setNextStopText("") 
+                    setNextStopText("")
                 }
             }
 
-            
+            if (data.ServiceType !== "Normal") {
+                setServiceTypeText(serviceTypes[data.ServiceType])
+            } else {
+                setServiceTypeText(null);
+            }
+
+
         }
     }
 
@@ -125,7 +132,7 @@ function Train() {
                                     Train {trainData.TrainId}
                                 </Typography>
                                 <Typography variant="overline" sx={{ lineHeight: 1, color: "#bbb" }}>
-                                    to {destinationName}
+                                    {destinationName}
                                 </Typography>
                             </div>
                             <div style={{ display: "flex", flexGrow: 1, flexDirection: "row", alignItems: "center", justifyContent: "flex-end" }}>
@@ -143,18 +150,22 @@ function Train() {
                                 {nextStopText}
                             </Typography>
 
-                            {/* <Divider orientation="horizontal" sx={{ margin: "8px" }} />
+                            {serviceTypeText !== null ?
+                                <>
+                                    <Divider orientation="horizontal" sx={{ margin: "8px" }} />
 
-                            <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "flex-start" }}>
-                                <Icon path={mdiAlertCircle} color="#ddd" size={1} />
-                                <Typography variant="body1" color="#ddd" sx={{ marginLeft: "5px" }}>
-                                    No passengers
-                                </Typography>
-                            </div> */}
+                                    <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "flex-start" }}>
+                                        <Icon path={mdiAlertCircle} color="#ddd" size={1} />
+                                        <Typography variant="body1" color="#ddd" sx={{ marginLeft: "5px" }}>
+                                            No passengers
+                                        </Typography>
+                                    </div>
+                                </>
+                                : null}
                         </div>
 
                         <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "flex-start" }}>
-                            <Typography variant="caption" color="secondary" sx={{ lineHeight: 1.1 }}>
+                            <Typography variant="caption" color="secondary.light" sx={{ lineHeight: 1.1 }}>
                                 dwelled for {trainData.SecondsAtLocation} seconds · {trainData.CarCount} cars
                             </Typography>
                         </div>
